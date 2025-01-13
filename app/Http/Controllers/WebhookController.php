@@ -4,86 +4,88 @@ namespace App\Http\Controllers;
 
 use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use GuzzleHttp\Client;
 
 class WebhookController extends Controller
 {
-    public function clientCreated(Request $request){
-        try{
-            $apiToken = env('AGENDOR_API_TOKEN');
-            Log::info('Authorization:', ['token' => $apiToken]);
+    private $client;
 
+    public function __construct()
+    {
+        $apiKey = env('AGENDOR_API_TOKEN');
+
+        $this->client = new Client([
+            'base_uri' => 'https://api.agendor.com.br/v3/',
+            'headers' => [
+                'Authorization' => 'Token ' . $apiKey,
+            ],
+        ]);
+    }
+
+    public function clientCreated(Request $request)
+    {
+        try {
             $data = $request->all();
 
-            Log::info();
-    
             $clientData = [
                 'name' => $data['billing']['first_name'] . ' ' . $data['billing']['last_name'],
                 'email' => $data['billing']['email'],
                 'phone' => $data['billing']['phone'],
             ];
-    
-            $response = Http::withHeaders([
-                'Authorization' => 'Token ' . $apiToken
-            ])->post('https://api.agendor.com.br/v3/organizations', $clientData);
 
-            if ($response->failed()) {
-                throw new Exception(json_encode($response->body()));                
+            $response = $this->client->post('organizations', [
+                'json' => $clientData
+            ]);
+
+            $dataResponse = json_decode($response->getBody()->getContents(), true);
+
+            if (!isset($dataResponse['data']['id'])) {
+                throw new Exception('Não foi possível recuperar dados do cliente');
             }
-            
-            $dataResponse = $response->json();
-            Log::info('clientCreated:', ['error' => json_encode($dataResponse)]);
 
-            return response()->json($dataResponse, $response->status());
-        }catch(Exception $error){
+            Log::info('clientCreated:', ['response' => $dataResponse]);
+
+            return $dataResponse['data'];
+        } catch (Exception $error) {
             Log::error('clientCreated:', ['error' => $error->getMessage()]);
-            return response()->json(['error' => 'Erro ao criar cliente no Agendor'], 200);
+            return response()->json(['error' => $error->getMessage()], 200);
         }
     }
 
     public function orderCreated(Request $request)
     {
-        try{
-            $apiToken = env('AGENDOR_API_TOKEN');
-            Log::info('Authorization:', ['token' => $apiToken]);
+        try {
+            $client = $this->clientCreated($request);
+            $client_id = $client['id'];
 
             $data = $request->all();
 
             $orderData = [
                 'title' => 'Pedido #' . $data['id'],
                 'value' => $data['total'],
+                'dealStatusText' => $this->mapDealStatusToAgendor($data['status']),
                 'description' => 'Pedido realizado no WooCommerce',
-                'organizationId' => null, //$this->getAgendorOrganizationId($data['billing']['email']),
-                'customFields' => [
-                    'status' => $this->mapStatusToAgendor($data['status'])
-                ],
             ];
 
-            $response = Http::withHeaders([
-                'Authorization' => 'Token ' . $apiToken
-            ])->post('https://api.agendor.com.br/v3/deals', $orderData);
+            $response = $this->client->post("organizations/$client_id/deals", [
+                'json' => $orderData
+            ]);
 
-            if ($response->failed()) {
-                throw new Exception(json_encode($response->body()));                
-            }
-    
-            $dataResponse = $response->json();
-            Log::info('orderCreated:', ['error' => json_encode($dataResponse)]);
+            $dataResponse = json_decode($response->getBody()->getContents(), true);
 
-            return response()->json($dataResponse, $response->status());
-        }catch(Exception $error){
+            Log::info('orderCreated:', ['response' => $dataResponse]);
+
+            return response()->json($dataResponse, $response->getStatusCode());
+        } catch (Exception $error) {
             Log::error('orderCreated:', ['error' => $error->getMessage()]);
-            return response()->json(['error' => 'Erro ao criar pedido no Agendor'], 200);
+            return response()->json(['error' => $error->getMessage()], 200);
         }
     }
 
     public function orderUpdated(Request $request)
     {
-        try{
-            $apiToken = env('AGENDOR_API_TOKEN');
-            Log::info('Authorization:', ['token' => $apiToken]);
-
+        try {
             $data = $request->all();
 
             $dealId = $this->getAgendorDealId($data['id']);
@@ -93,50 +95,37 @@ class WebhookController extends Controller
             }
 
             $updateData = [
-                'customFields' => [
-                    'status' => $this->mapStatusToAgendor($data['status'])
-                ]
+                'dealStatusText' => $this->mapDealStatusToAgendor($data['status']),
             ];
 
-            $response = Http::withHeaders([
-                'Authorization' => 'Token ' . $apiToken
-            ])->put("https://api.agendor.com.br/v3/deals/{$dealId}", $updateData);
+            $response = $this->client->put("deals/{$dealId}/status", [
+                'json' => $updateData
+            ]);
 
-            if ($response->failed()) {
-                throw new Exception(json_encode($response->body()));                
-            }
-    
-            $dataResponse = $response->json();
-            Log::info('orderUpdated:', ['error' => json_encode($dataResponse)]);
+            $dataResponse = json_decode($response->getBody()->getContents(), true);
 
-            return response()->json($dataResponse, $response->status());
-        }catch(Exception $error){
+            Log::info('orderUpdated:', ['response' => $dataResponse]);
+
+            return response()->json($dataResponse, $response->getStatusCode());
+        } catch (Exception $error) {
             Log::error('orderUpdated:', ['error' => $error->getMessage()]);
-            return response()->json(['error' => 'Erro ao atualizar pedido no Agendor'], 200);
+            return response()->json(['error' => $error->getMessage()], 200);
         }
     }
 
     private function getAgendorOrganizationId($email)
     {
-        try{
-            $apiToken = env('AGENDOR_API_TOKEN');
-            Log::info('Authorization:', ['token' => $apiToken]);
+        try {
+            $response = $this->client->get('organizations', [
+                'query' => ['email' => $email]
+            ]);
 
-            $response = Http::withHeaders([
-                'Authorization' => 'Token ' . $apiToken
-            ])->get('https://api.agendor.com.br/v3/organizations', [
-                    'email' => $email,
-                ]);
+            $organizations = json_decode($response->getBody()->getContents(), true);
 
-            if ($response->failed()) {
-                throw new Exception(json_encode($response->body()));                
-            }
+            Log::info('getAgendorOrganizationId:', ['response' => $organizations]);
 
-            $organizations = $response->json();
-            Log::info('getAgendorOrganizationId:', ['error' => json_encode($organizations)]);
-            
             return $organizations['data'][0]['id'] ?? env('ORGANIZATION_ID');
-        }catch(Exception $error){
+        } catch (Exception $error) {
             Log::error('getAgendorOrganizationId:', ['error' => $error->getMessage()]);
             return env('ORGANIZATION_ID') ?? null;
         }
@@ -144,26 +133,17 @@ class WebhookController extends Controller
 
     private function getAgendorDealId($wooOrderId)
     {
-        try{
-            $apiToken = env('AGENDOR_API_TOKEN');
-            Log::info('Authorization:', ['token' => $apiToken]);
+        try {
+            $response = $this->client->get('deals', [
+                'query' => ['search' => 'Pedido #' . $wooOrderId]
+            ]);
 
-            $response = Http::withHeaders([
-                'Authorization' => 'Token ' . $apiToken
-            ])->get('https://api.agendor.com.br/v3/deals', [
-                    'search' => 'Pedido #' . $wooOrderId
-                ]);
+            $deals = json_decode($response->getBody()->getContents(), true);
 
-            if ($response->failed()) {
-                throw new Exception(json_encode($response->body()));                
-            }
-
-            $deals = $response->json();
             return $deals['data'][0]['id'] ?? null;
-
-        }catch(Exception $error){
+        } catch (Exception $error) {
             Log::error('getAgendorDealId:', ['error' => $error->getMessage()]);
-            return response()->json(['error' => 'Erro ao criar cliente no Agendor'], 200);
+            return null;
         }
     }
 
@@ -180,5 +160,19 @@ class WebhookController extends Controller
         ];
 
         return $statusMap[$wooStatus] ?? 'Status desconhecido';
+    }
+
+    private function mapDealStatusToAgendor($wooStatus)
+    {
+        $statusMap = [
+            'processing' => 'ongoing',
+            'on-hold' => 'ongoing',
+            'completed' => 'won',
+            'cancelled' => 'lost',
+            'refunded' => 'lost',
+            'failed' => 'lost'
+        ];
+
+        return $statusMap[$wooStatus] ?? 'ongoing';
     }
 }
