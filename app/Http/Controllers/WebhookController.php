@@ -53,7 +53,7 @@ class WebhookController extends Controller
                 'title' => 'Pedido #' . $data['id'],
                 'value' => $data['total'],
                 'description' => 'Pedido realizado no WooCommerce',
-                'organizationId' => $this->getAgendorOrganizationId($data['billing']['email']),
+                'organizationId' => null, //$this->getAgendorOrganizationId($data['billing']['email']),
                 'customFields' => [
                     'status' => $this->mapStatusToAgendor($data['status'])
                 ],
