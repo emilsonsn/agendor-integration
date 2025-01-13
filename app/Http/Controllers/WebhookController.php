@@ -32,7 +32,7 @@ class WebhookController extends Controller
             return response()->json($dataResponse, $response->status());
         }catch(Exception $error){
             Log::error('clientCreated:', ['error' => $error->getMessage()]);
-            return response()->json(['error' => 'Erro ao criar cliente no Agendor'], 500);
+            return response()->json(['error' => 'Erro ao criar cliente no Agendor'], 200);
         }
     }
 
@@ -64,7 +64,7 @@ class WebhookController extends Controller
             return response()->json($dataResponse, $response->status());
         }catch(Exception $error){
             Log::error('orderCreated:', ['error' => $error->getMessage()]);
-            return response()->json(['error' => 'Erro ao criar pedido no Agendor'], 500);
+            return response()->json(['error' => 'Erro ao criar pedido no Agendor'], 200);
         }
     }
 
@@ -98,7 +98,7 @@ class WebhookController extends Controller
             return response()->json($dataResponse, $response->status());
         }catch(Exception $error){
             Log::error('orderUpdated:', ['error' => $error->getMessage()]);
-            return response()->json(['error' => 'Erro ao atualizar pedido no Agendor'], 500);
+            return response()->json(['error' => 'Erro ao atualizar pedido no Agendor'], 200);
         }
     }
 
@@ -142,7 +142,7 @@ class WebhookController extends Controller
 
         }catch(Exception $error){
             Log::error('getAgendorDealId:', ['error' => $error->getMessage()]);
-            return response()->json(['error' => 'Erro ao criar cliente no Agendor'], 500);
+            return response()->json(['error' => 'Erro ao criar cliente no Agendor'], 200);
         }
     }
 
