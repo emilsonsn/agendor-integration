@@ -25,8 +25,11 @@ class WebhookController extends Controller
             if ($response->failed()) {
                 throw new Exception(json_encode($response->body()));                
             }
-    
-            return response()->json($response->json(), $response->status());
+            
+            $dataResponse = $response->json();
+            Log::info('clientCreated:', ['error' => json_encode($dataResponse)]);
+
+            return response()->json($dataResponse, $response->status());
         }catch(Exception $error){
             Log::error('clientCreated:', ['error' => $error->getMessage()]);
             return response()->json(['error' => 'Erro ao criar cliente no Agendor'], 500);
@@ -55,9 +58,12 @@ class WebhookController extends Controller
                 throw new Exception(json_encode($response->body()));                
             }
     
-            return response()->json($response->json(), $response->status());
+            $dataResponse = $response->json();
+            Log::info('orderCreated:', ['error' => json_encode($dataResponse)]);
+
+            return response()->json($dataResponse, $response->status());
         }catch(Exception $error){
-            Log::error('clientCreated:', ['error' => $error->getMessage()]);
+            Log::error('orderCreated:', ['error' => $error->getMessage()]);
             return response()->json(['error' => 'Erro ao criar pedido no Agendor'], 500);
         }
     }
@@ -86,7 +92,10 @@ class WebhookController extends Controller
                 throw new Exception(json_encode($response->body()));                
             }
     
-            return response()->json($response->json(), $response->status());
+            $dataResponse = $response->json();
+            Log::info('orderUpdated:', ['error' => json_encode($dataResponse)]);
+
+            return response()->json($dataResponse, $response->status());
         }catch(Exception $error){
             Log::error('orderUpdated:', ['error' => $error->getMessage()]);
             return response()->json(['error' => 'Erro ao atualizar pedido no Agendor'], 500);
@@ -107,10 +116,12 @@ class WebhookController extends Controller
             }
 
             $organizations = $response->json();
+            Log::info('getAgendorOrganizationId:', ['error' => json_encode($organizations)]);
+            
             return $organizations['data'][0]['id'] ?? env('ORGANIZATION_ID');
         }catch(Exception $error){
             Log::error('getAgendorOrganizationId:', ['error' => $error->getMessage()]);
-            return env('ORGANIZATION_ID');            
+            return env('ORGANIZATION_ID') ?? null;
         }
     }
 

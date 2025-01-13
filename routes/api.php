@@ -25,4 +25,3 @@ Route::prefix('webhook')->middleware(WebhookMiddleware::class)->group(function()
     Route::post('order-created', [WebhookController::class, 'orderCreated']);
     Route::post('order-updated', [WebhookController::class, 'orderUpdated']);
 });
-
