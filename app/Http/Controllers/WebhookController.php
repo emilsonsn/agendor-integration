@@ -24,8 +24,9 @@ class WebhookController extends Controller
                 'phone' => $data['billing']['phone'],
             ];
     
-            $response = Http::withToken($apiToken)
-                ->post('https://api.agendor.com.br/v3/organizations', $clientData);
+            $response = Http::withHeaders([
+                'Authorization' => 'Token ' . $apiToken
+            ])->post('https://api.agendor.com.br/v3/organizations', $clientData);
 
             if ($response->failed()) {
                 throw new Exception(json_encode($response->body()));                
@@ -59,8 +60,9 @@ class WebhookController extends Controller
                 ],
             ];
 
-            $response = Http::withToken($apiToken)
-                ->post('https://api.agendor.com.br/v3/deals', $orderData);
+            $response = Http::withHeaders([
+                'Authorization' => 'Token ' . $apiToken
+            ])->post('https://api.agendor.com.br/v3/deals', $orderData);
 
             if ($response->failed()) {
                 throw new Exception(json_encode($response->body()));                
@@ -96,8 +98,9 @@ class WebhookController extends Controller
                 ]
             ];
 
-            $response = Http::withToken($apiToken)
-                ->put("https://api.agendor.com.br/v3/deals/{$dealId}", $updateData);
+            $response = Http::withHeaders([
+                'Authorization' => 'Token ' . $apiToken
+            ])->put("https://api.agendor.com.br/v3/deals/{$dealId}", $updateData);
 
             if ($response->failed()) {
                 throw new Exception(json_encode($response->body()));                
@@ -119,8 +122,9 @@ class WebhookController extends Controller
             $apiToken = env('AGENDOR_API_TOKEN');
             Log::info('Authorization:', ['token' => $apiToken]);
 
-            $response = Http::withToken($apiToken)
-                ->get('https://api.agendor.com.br/v3/organizations', [
+            $response = Http::withHeaders([
+                'Authorization' => 'Token ' . $apiToken
+            ])->get('https://api.agendor.com.br/v3/organizations', [
                     'email' => $email,
                 ]);
 
@@ -144,8 +148,9 @@ class WebhookController extends Controller
             $apiToken = env('AGENDOR_API_TOKEN');
             Log::info('Authorization:', ['token' => $apiToken]);
 
-            $response = Http::withToken($apiToken)
-                ->get('https://api.agendor.com.br/v3/deals', [
+            $response = Http::withHeaders([
+                'Authorization' => 'Token ' . $apiToken
+            ])->get('https://api.agendor.com.br/v3/deals', [
                     'search' => 'Pedido #' . $wooOrderId
                 ]);
 
