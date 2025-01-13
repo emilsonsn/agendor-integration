@@ -17,19 +17,12 @@ class WebhookMiddleware
     public function handle(Request $request, Closure $next): Response
     {
 
-        $receivedToken = $request->header('Authorization');
+        // $webhookToken = env('WEBHOOK_API_TOKEN');
 
-        Log::info('Webhook received from WooCommerce:', [
-            'payload' => $request->all(),
-            'authorization' => $receivedToken
-        ]);
-
-        $webhookToken = env('WEBHOOK_API_TOKEN');
-
-        if ($receivedToken !== 'Bearer ' . $webhookToken) {
-            return $next($request);
-            // return response()->json(['error' => 'Unauthorized'], 401);
-        }
+        // if ($receivedToken !== 'Bearer ' . $webhookToken) {
+        //     return $next($request);
+        //     // return response()->json(['error' => 'Unauthorized'], 401);
+        // }
 
         return $next($request);
     }
