@@ -30,8 +30,18 @@ class WebhookController extends Controller
 
             $clientData = [
                 'name' => $data['billing']['first_name'] . ' ' . $data['billing']['last_name'],
-                'email' => $data['billing']['email'],
-                'phone' => $data['billing']['phone'],
+                'organization' => null,
+                'cpf' => '13754674412',
+                'contact' => [
+                    'email' => $data['billing']['email'],
+                    'mobile' => str_replace('-', '', $data['billing']['phone']),
+                ], 
+                'address' => [
+                    'country' => $data['billing']['country'],
+                    'postcode' => $data['billing']['postcode'],
+                    'city' => $data['billing']['city'],
+                    'street_name' => $data['billing']['address_1'],                  
+                ],               
             ];
 
             $response = $this->client->post('organizations', [
