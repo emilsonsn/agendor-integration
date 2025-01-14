@@ -44,7 +44,7 @@ class WebhookController extends Controller
                 ],               
             ];
 
-            $response = $this->client->post('organizations', [
+            $response = $this->client->post('people', [
                 'json' => $clientData
             ]);
 
@@ -78,7 +78,7 @@ class WebhookController extends Controller
                 'description' => 'Pedido realizado no WooCommerce',
             ];
 
-            $response = $this->client->post("organizations/$client_id/deals", [
+            $response = $this->client->post("people/$client_id/deals", [
                 'json' => $orderData
             ]);
 
