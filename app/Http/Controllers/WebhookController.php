@@ -123,34 +123,24 @@ class WebhookController extends Controller
         }
     }
 
-    private function getAgendorOrganizationId($email)
-    {
-        try {
-            $response = $this->client->get('organizations', [
-                'query' => ['email' => $email]
-            ]);
-
-            $organizations = json_decode($response->getBody()->getContents(), true);
-
-            Log::info('getAgendorOrganizationId:', ['response' => $organizations]);
-
-            return $organizations['data'][0]['id'] ?? env('ORGANIZATION_ID');
-        } catch (Exception $error) {
-            Log::error('getAgendorOrganizationId:', ['error' => $error->getMessage()]);
-            return env('ORGANIZATION_ID') ?? null;
-        }
-    }
-
     private function getAgendorDealId($wooOrderId)
     {
         try {
+            $orderTitle = 'Pedido #' . $wooOrderId;
+            
             $response = $this->client->get('deals', [
-                'query' => ['search' => 'Pedido #' . $wooOrderId]
+                'query' => ['search' => $orderTitle]
             ]);
 
             $deals = json_decode($response->getBody()->getContents(), true);
 
-            return $deals['data'][0]['id'] ?? null;
+            foreach ($deals['data'] as $deal) {
+                if (isset($deal['title']) && $deal['title'] === $orderTitle) {
+                    return $deal['id'];
+                }
+            }
+
+            return null;
         } catch (Exception $error) {
             Log::error('getAgendorDealId:', ['error' => $error->getMessage()]);
             return null;
