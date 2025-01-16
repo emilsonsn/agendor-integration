@@ -30,8 +30,6 @@ class WebhookController extends Controller
 
             $clientData = [
                 'name' => $data['billing']['first_name'] . ' ' . $data['billing']['last_name'],
-                'organization' => null,
-                'cpf' => '13754674412',
                 'contact' => [
                     'email' => $data['billing']['email'],
                     'mobile' => str_replace('-', '', $data['billing']['phone']),
@@ -44,7 +42,7 @@ class WebhookController extends Controller
                 ],               
             ];
 
-            $response = $this->client->post('people', [
+            $response = $this->client->post('people/upsert', [
                 'json' => $clientData
             ]);
 
