@@ -6,6 +6,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use GuzzleHttp\Client;
+use PHPUnit\TextUI\Configuration\Merger;
 
 class WebhookController extends Controller
 {
@@ -30,19 +31,68 @@ class WebhookController extends Controller
 
             $clientData = [
                 'name' => $data['billing']['first_name'] . ' ' . $data['billing']['last_name'],
+                'birthday' =>  $data['billing']['birthdate'],
+                'cpf' => preg_replace('/\D/', '', $data['billing']['cpf']),
                 'contact' => [
                     'email' => $data['billing']['email'],
                     'mobile' => str_replace('-', '', $data['billing']['phone']),
                 ], 
                 'address' => [
-                    'country' => $data['billing']['country'],
-                    'postcode' => $data['billing']['postcode'],
-                    'city' => $data['billing']['city'],
-                    'street_name' => $data['billing']['address_1'],                  
+                    'country' => $data['billing']['country'] ?? null,
+                    'district' => $data['billing']['neighborhood'] ?? null,
+                    'street_number' => $data['billing']['number'] ?? null,
+                    'additional_info' => $data['billing']['address_2'] ?? null,
+                    'postal_code' => $data['billing']['postcode'] ?? '',
+                    'city' => $data['billing']['city'] ?? null,
+                    'street_name' => $data['billing']['address_1'] ?? null,
                 ],               
             ];
 
             $response = $this->client->post('people/upsert', [
+                'json' => $clientData
+            ]);
+
+            $dataResponse = json_decode($response->getBody()->getContents(), true);
+
+            if (!isset($dataResponse['data']['id'])) {
+                throw new Exception('Não foi possível recuperar dados do cliente');
+            }
+
+            Log::info('clientCreated:', ['response' => $dataResponse]);
+
+            return $dataResponse['data'];
+        } catch (Exception $error) {
+            Log::error('clientCreated:', ['error' => $error->getMessage()]);
+            return ['error' => $error->getMessage()];
+        }
+    }
+
+    public function organizationCreate(Request $request)
+    {
+        try {
+            $data = $request->all();
+
+            $clientData = [
+                'name' => $data['billing']['company'],
+                'legalName' => $data['billing']['company'],
+                'birthday' =>  $data['billing']['birthdate'],
+                'cnpj' => preg_replace('/\D/', '', $data['billing']['cnpj']),
+                'contact' => [
+                    'email' => $data['billing']['email'],
+                    'mobile' => str_replace('-', '', $data['billing']['phone']),
+                ], 
+                'address' => [
+                    'country' => $data['billing']['country'] ?? null,
+                    'district' => $data['billing']['neighborhood'] ?? null,
+                    'street_number' => $data['billing']['number'] ?? null,
+                    'additional_info' => $data['billing']['address_2'] ?? null,
+                    'postal_code' => $data['billing']['postcode'] ?? null,
+                    'city' => $data['billing']['city'] ?? null,
+                    'street_name' => $data['billing']['address_1'] ?? null,
+                ],               
+            ];
+
+            $response = $this->client->post('organizations/upsert', [
                 'json' => $clientData
             ]);
 
@@ -64,8 +114,17 @@ class WebhookController extends Controller
     public function orderCreated(Request $request)
     {
         try {
-            $client = $this->clientCreated($request);
-            $client_id = $client['id'];
+            $result = match (true) {
+                isset($request['billing']['cpf']) => [$this->clientCreated($request), 'people'],
+                isset($request['billing']['cnpj']) => [$this->organizationCreate($request), 'organizations'],
+                default => [null],
+            };
+
+            if(! $result[0]){
+                throw new Exception('Cliente não encontrado');
+            }
+                        
+            $client_id = $result[0]['id'];
 
             $data = $request->all();
 
@@ -76,7 +135,7 @@ class WebhookController extends Controller
                 'description' => 'Pedido realizado no WooCommerce',
             ];
 
-            $response = $this->client->post("people/$client_id/deals", [
+            $response = $this->client->post("{$result[1]}/$client_id/deals", [
                 'json' => $orderData
             ]);
 
